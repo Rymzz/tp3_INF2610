@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <arpa/inet.h>
 #include <stdint.h>
 #include <time.h>
@@ -146,7 +147,6 @@ char *retirer(void) {
     return video;
 }
 
-/* Met arret à 1 et réveille les threads endormis pour qu'ils le voient. */
 void arreter_serveur(void) {
     entrer();
     serveur.arret = 1;
@@ -157,7 +157,6 @@ void arreter_serveur(void) {
     sortir();
 }
 
-/* createVideo modifie video_id : une seule caméra à la fois. */
 static pthread_mutex_t mutex_creation = PTHREAD_MUTEX_INITIALIZER;
 
 void *boucle_camera(void *arg) {
@@ -186,10 +185,147 @@ void *boucle_ecran(void *arg) {
     return NULL;
 }
 
+void *surveiller_panne(void *arg) {
+    (void)arg;
+    while (!breakdown_flag)
+        usleep(1000);
+    arreter_serveur();
+    return NULL;
+}
+
+int vers_secondaire[2];
+int vers_principal[2];
+
+int lire_ligne(int fd, char *ligne, int taille) {
+    int n = 0;
+    while (n < taille - 1) {
+        char c;
+        ssize_t recu = read(fd, &c, 1);
+        if (recu <= 0)
+            return 0;
+        if (c == '\n')
+            break;
+        ligne[n++] = c;
+    }
+    ligne[n] = '\0';
+    return 1;
+}
+
+void serveur_secondaire(void) {
+    close(vers_secondaire[1]);
+    close(vers_principal[0]);
+
+    printf("[SECONDAIRE pid=%d] En attente de la copie.\n", getpid());
+    fflush(stdout);
+
+    char copie[BUFFER_SIZE][64];
+    int nb = 0;
+    char ligne[64];
+    while (nb < BUFFER_SIZE && lire_ligne(vers_secondaire[0], ligne, 64)) {
+        if (strcmp(ligne, "FIN") == 0)
+            break;
+        strcpy(copie[nb], ligne);
+        nb++;
+    }
+
+    printf("[SECONDAIRE pid=%d] Copie de %d video(s) :\n", getpid(), nb);
+    int i;
+    for (i = 0; i < nb; i++)
+        printf("  %s\n", copie[i]);
+    fflush(stdout);
+
+    write(vers_principal[1], "CONFIRMATION\n", 13);
+
+    /* Attend que le principal demande le retour des vidéos */
+    if (!lire_ligne(vers_secondaire[0], ligne, 64))
+        return;
+    for (i = 0; i < nb; i++) {
+        char envoi[64];
+        snprintf(envoi, sizeof(envoi), "%s\n", copie[i]);
+        write(vers_principal[1], envoi, strlen(envoi));
+    }
+    write(vers_principal[1], "FIN\n", 4);
+
+    close(vers_secondaire[0]);
+    close(vers_principal[1]);
+}
+
+void envoyer_copie(pid_t pid_secondaire) {
+    printf("[PRINCIPAL pid=%d] Envoi du tampon au secondaire (pid=%d).\n",
+           getpid(), pid_secondaire);
+
+    int i;
+    for (i = 0; i < serveur.nb_videos; i++) {
+        int indice = (serveur.indice_retrait + i) % BUFFER_SIZE;
+        char ligne[64];
+        snprintf(ligne, sizeof(ligne), "%s\n", serveur.videos[indice]);
+        write(vers_secondaire[1], ligne, strlen(ligne));
+    }
+    write(vers_secondaire[1], "FIN\n", 4);
+
+    char reponse[64];
+    lire_ligne(vers_principal[0], reponse, 64);
+    printf("[PRINCIPAL pid=%d] Confirmation recue : %s\n", getpid(), reponse);
+}
+
+/* Vide le tampon et autorise de nouveau les dépôts et les retraits. */
+void reinitialiser_tampon(void) {
+    entrer();
+    int i;
+    for (i = 0; i < BUFFER_SIZE; i++) {
+        free(serveur.videos[i]);
+        serveur.videos[i] = NULL;
+    }
+    serveur.indice_depot = 0;
+    serveur.indice_retrait = 0;
+    serveur.nb_videos = 0;
+    serveur.arret = 0;
+    sortir();
+}
+
+/* Demande au secondaire les vidéos sauvées et les remet dans le tampon. */
+void recevoir_copie(void) {
+    write(vers_secondaire[1], "RETOUR\n", 7);
+
+    char ligne[64];
+    while (lire_ligne(vers_principal[0], ligne, 64)) {
+        if (strcmp(ligne, "FIN") == 0)
+            break;
+        char *video = malloc(64);
+        if (!video) {
+            perror("malloc");
+            exit(1);
+        }
+        strcpy(video, ligne);
+        if (!deposer(video))
+            free(video);
+    }
+
+    close(vers_secondaire[1]);
+    close(vers_principal[0]);
+}
+
 int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
     srand(time(NULL));
+
+    if (pipe(vers_secondaire) < 0 || pipe(vers_principal) < 0) {
+        perror("pipe");
+        exit(1);
+    }
+
+    pid_t pid_secondaire = fork();
+    if (pid_secondaire < 0) {
+        perror("fork");
+        exit(1);
+    }
+    if (pid_secondaire == 0) {
+        serveur_secondaire();
+        exit(0);
+    }
+    close(vers_secondaire[0]);
+    close(vers_principal[1]);
 
     struct sigaction sa;
     sa.sa_handler = handle_breakdown;
@@ -202,7 +338,37 @@ int main(int argc, char *argv[]) {
 
     pthread_t cameras[N_CAMERAS];
     pthread_t ecrans[N_SCREENS];
+    pthread_t panne;
     int i;
+
+    for (i = 0; i < N_CAMERAS; i++)
+        pthread_create(&cameras[i], NULL, boucle_camera, NULL);
+    for (i = 0; i < N_SCREENS; i++)
+        pthread_create(&ecrans[i], NULL, boucle_ecran, NULL);
+    pthread_create(&panne, NULL, surveiller_panne, NULL);
+
+    for (i = 0; i < N_CAMERAS; i++)
+        pthread_join(cameras[i], NULL);
+    for (i = 0; i < N_SCREENS; i++)
+        pthread_join(ecrans[i], NULL);
+    pthread_join(panne, NULL);
+
+    printf("Tampon figé (%d vidéos) :\n", serveur.nb_videos);
+    for (i = 0; i < serveur.nb_videos; i++) {
+        int indice = (serveur.indice_retrait + i) % BUFFER_SIZE;
+        printf("  %s\n", serveur.videos[indice]);
+    }
+
+    envoyer_copie(pid_secondaire);
+
+    printf("Appuyez sur Entree pour redemarrer le serveur principal.\n");
+    fflush(stdout);
+    char touche[16];
+    fgets(touche, sizeof(touche), stdin);
+
+    reinitialiser_tampon();
+    recevoir_copie();
+    waitpid(pid_secondaire, NULL, 0);
 
     for (i = 0; i < N_CAMERAS; i++)
         pthread_create(&cameras[i], NULL, boucle_camera, NULL);
