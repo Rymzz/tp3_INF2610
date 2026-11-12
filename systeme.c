@@ -221,11 +221,13 @@ void serveur_secondaire(void) {
     char copie[BUFFER_SIZE][64];
     int nb = 0;
     char ligne[64];
-    while (nb < BUFFER_SIZE && lire_ligne(vers_secondaire[0], ligne, 64)) {
+    while (lire_ligne(vers_secondaire[0], ligne, 64)) {
         if (strcmp(ligne, "FIN") == 0)
             break;
-        strcpy(copie[nb], ligne);
-        nb++;
+        if (nb < BUFFER_SIZE) {
+            strcpy(copie[nb], ligne);
+            nb++;
+        }
     }
 
     printf("[SECONDAIRE pid=%d] Copie de %d video(s) :\n", getpid(), nb);
