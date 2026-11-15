@@ -17,6 +17,8 @@
 #define BUFFER_SIZE 5
 #define N_CAMERAS 3
 #define N_SCREENS 2
+#define MAX_SAUVEGARDE (BUFFER_SIZE + N_SCREENS)
+#define DUREE_DIFFUSION_MS 2000
 // Rappel de l'énoncé : le total caméras + écrans doit être > 4.
 
 // ------------------- Simulation de caméra/écran (fournies, ne pas modifier) -------------------
@@ -66,6 +68,10 @@ typedef struct {
     int nb_ecran_en_attente;
     int nb_signaleurs;
     int arret;
+
+    /* SECTION 2 : une vidéo retirée reste conservée ici jusqu’à validation.
+     * Une case par écran : elle appartient au serveur, pas au thread. */
+    char *en_cours[N_SCREENS];
 } Serveur;
 
 Serveur serveur = {
@@ -130,8 +136,14 @@ int deposer(char *video) {
 }
 
 /* Retourne NULL si arret est vrai. */
-char *retirer(void) {
+char *retirer(int ecran) {
     entrer();
+    /* Après restauration, cet écran reprend sa vidéo interrompue. */
+    if (!serveur.arret && serveur.en_cours[ecran] != NULL) {
+        char *video = serveur.en_cours[ecran];
+        sortir();
+        return video;
+    }
     while (!serveur.arret && serveur.nb_videos == 0)
         attendre(&serveur.objet_dispo, &serveur.nb_ecran_en_attente);
     if (serveur.arret) {
@@ -139,6 +151,9 @@ char *retirer(void) {
         return NULL;
     }
     char *video = serveur.videos[serveur.indice_retrait];
+    /* Transfert de propriété atomique sous le moniteur : aucun instant
+     * où la vidéo ne figure ni dans le tampon ni dans en_cours. */
+    serveur.en_cours[ecran] = video;
     serveur.videos[serveur.indice_retrait] = NULL;
     serveur.indice_retrait = (serveur.indice_retrait + 1) % BUFFER_SIZE;
     serveur.nb_videos--;
@@ -173,14 +188,47 @@ void *boucle_camera(void *arg) {
     return NULL;
 }
 
+/* SECTION 2 : simulation d'une diffusion interruptible sans modifier
+ * broadcastVideo(), fournie par le TP. La vidéo n'est validée qu'à la fin.
+ * Le modèle couvre une panne simulée coopérative, pas un arrêt brutal du processus.
+ */
+int diffuser_et_valider(int ecran, char *video) {
+    printf("[EN COURS écran %d] %s\n", ecran, video);
+    for (int ms = 0; ms < DUREE_DIFFUSION_MS; ms += 20) {
+        usleep(20000);
+        entrer();
+        int interrompue = serveur.arret || breakdown_flag;
+        sortir();
+        if (interrompue) {
+            printf("[INTERROMPUE écran %d] %s conservée pour reprise\n", ecran, video);
+            return 0; /* Ne pas libérer : la sauvegarde en a besoin. */
+        }
+    }
+
+    /* Validation et arrêt sont sérialisés par le même moniteur.
+     * Si la panne a déjà été observée, on garde la vidéo pour la rejouer.
+     * Le printf fourni représente ici l'achèvement de la diffusion simulée. */
+    entrer();
+    if (serveur.arret || breakdown_flag) {
+        sortir();
+        printf("[INTERROMPUE écran %d] %s conservée pour reprise\n", ecran, video);
+        return 0;
+    }
+    broadcastVideo(video);
+    serveur.en_cours[ecran] = NULL;
+    free(video);
+    sortir();
+    return 1;
+}
+
 void *boucle_ecran(void *arg) {
-    (void)arg;
+    int ecran = *(int *)arg;
     for (;;) {
-        char *video = retirer();
+        char *video = retirer(ecran);
         if (video == NULL)
             break;
-        broadcastVideo(video);
-        free(video);
+        if (!diffuser_et_valider(ecran, video))
+            break;
     }
     return NULL;
 }
@@ -218,13 +266,13 @@ void serveur_secondaire(void) {
     printf("[SECONDAIRE pid=%d] En attente de la copie.\n", getpid());
     fflush(stdout);
 
-    char copie[BUFFER_SIZE][64];
+    char copie[MAX_SAUVEGARDE][64];
     int nb = 0;
     char ligne[64];
     while (lire_ligne(vers_secondaire[0], ligne, 64)) {
         if (strcmp(ligne, "FIN") == 0)
             break;
-        if (nb < BUFFER_SIZE) {
+        if (nb < MAX_SAUVEGARDE) {
             strcpy(copie[nb], ligne);
             nb++;
         }
@@ -242,7 +290,7 @@ void serveur_secondaire(void) {
     if (!lire_ligne(vers_secondaire[0], ligne, 64))
         return;
     for (i = 0; i < nb; i++) {
-        char envoi[64];
+        char envoi[96];
         snprintf(envoi, sizeof(envoi), "%s\n", copie[i]);
         write(vers_principal[1], envoi, strlen(envoi));
     }
@@ -260,8 +308,17 @@ void envoyer_copie(pid_t pid_secondaire) {
     for (i = 0; i < serveur.nb_videos; i++) {
         int indice = (serveur.indice_retrait + i) % BUFFER_SIZE;
         char ligne[64];
-        snprintf(ligne, sizeof(ligne), "%s\n", serveur.videos[indice]);
+        snprintf(ligne, sizeof(ligne), "Q %s\n", serveur.videos[indice]);
         write(vers_secondaire[1], ligne, strlen(ligne));
+    }
+    /* SECTION 2 : sauver aussi toutes les diffusions non validées.
+     * Les threads ont été joints : les pointeurs ne changent plus. */
+    for (int e = 0; e < N_SCREENS; e++) {
+        if (serveur.en_cours[e] != NULL) {
+            char ligne[96];
+            snprintf(ligne, sizeof(ligne), "E %d %s\n", e, serveur.en_cours[e]);
+            write(vers_secondaire[1], ligne, strlen(ligne));
+        }
     }
     write(vers_secondaire[1], "FIN\n", 4);
 
@@ -277,6 +334,10 @@ void reinitialiser_tampon(void) {
     for (i = 0; i < BUFFER_SIZE; i++) {
         free(serveur.videos[i]);
         serveur.videos[i] = NULL;
+    }
+    for (int e = 0; e < N_SCREENS; e++) {
+        free(serveur.en_cours[e]);
+        serveur.en_cours[e] = NULL;
     }
     serveur.indice_depot = 0;
     serveur.indice_retrait = 0;
@@ -298,9 +359,21 @@ void recevoir_copie(void) {
             perror("malloc");
             exit(1);
         }
-        strcpy(video, ligne);
-        if (!deposer(video))
+        int ecran;
+        char contenu[64];
+        if (sscanf(ligne, "E %d %63s", &ecran, contenu) == 2 &&
+            ecran >= 0 && ecran < N_SCREENS) {
+            strcpy(video, contenu);
+            serveur.en_cours[ecran] = video;
+            printf("[RESTAURATION écran %d] %s à reprendre\n", ecran, video);
+        } else if (strncmp(ligne, "Q ", 2) == 0) {
+            strcpy(video, ligne + 2);
+            if (!deposer(video)) free(video);
+        } else {
+            fprintf(stderr, "Enregistrement de sauvegarde invalide\n");
             free(video);
+            exit(1);
+        }
     }
 
     close(vers_secondaire[1]);
@@ -341,12 +414,14 @@ int main(int argc, char *argv[]) {
     pthread_t cameras[N_CAMERAS];
     pthread_t ecrans[N_SCREENS];
     pthread_t panne;
+    int ids_ecrans[N_SCREENS];
+    for (int e = 0; e < N_SCREENS; e++) ids_ecrans[e] = e;
     int i;
 
     for (i = 0; i < N_CAMERAS; i++)
         pthread_create(&cameras[i], NULL, boucle_camera, NULL);
     for (i = 0; i < N_SCREENS; i++)
-        pthread_create(&ecrans[i], NULL, boucle_ecran, NULL);
+        pthread_create(&ecrans[i], NULL, boucle_ecran, &ids_ecrans[i]);
     pthread_create(&panne, NULL, surveiller_panne, NULL);
 
     for (i = 0; i < N_CAMERAS; i++)
@@ -368,6 +443,7 @@ int main(int argc, char *argv[]) {
     char touche[16];
     fgets(touche, sizeof(touche), stdin);
 
+    breakdown_flag = 0; /* La panne simulée est résolue. */
     reinitialiser_tampon();
     recevoir_copie();
     waitpid(pid_secondaire, NULL, 0);
@@ -375,7 +451,7 @@ int main(int argc, char *argv[]) {
     for (i = 0; i < N_CAMERAS; i++)
         pthread_create(&cameras[i], NULL, boucle_camera, NULL);
     for (i = 0; i < N_SCREENS; i++)
-        pthread_create(&ecrans[i], NULL, boucle_ecran, NULL);
+        pthread_create(&ecrans[i], NULL, boucle_ecran, &ids_ecrans[i]);
 
     for (i = 0; i < N_CAMERAS; i++)
         pthread_join(cameras[i], NULL);

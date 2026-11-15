@@ -1,0 +1,254 @@
+[SECONDAIRE pid=24143] En attente de la copie.
+[EN COURS écran 0] Video-0
+[EN COURS écran 1] Video-1
+[SCREEN] Diffusion: Video-1
+[EN COURS écran 1] Video-2
+[SCREEN] Diffusion: Video-0
+[EN COURS écran 0] Video-3
+[SCREEN] Diffusion: Video-2
+[SCREEN] Diffusion: Video-3
+[EN COURS écran 1] Video-4
+[EN COURS écran 0] Video-5
+[SCREEN] Diffusion: Video-4
+[SCREEN] Diffusion: Video-5
+[EN COURS écran 0] Video-7
+[EN COURS écran 1] Video-6
+[SCREEN] Diffusion: Video-7
+[EN COURS écran 0] Video-8
+[SCREEN] Diffusion: Video-6
+[EN COURS écran 1] Video-9
+[SCREEN] Diffusion: Video-8
+[EN COURS écran 0] Video-10
+[SCREEN] Diffusion: Video-9
+[EN COURS écran 1] Video-11
+[SCREEN] Diffusion: Video-10
+[SCREEN] Diffusion: Video-11
+[EN COURS écran 1] Video-13
+[EN COURS écran 0] Video-14
+[SCREEN] Diffusion: Video-13
+[SCREEN] Diffusion: Video-14
+[EN COURS écran 1] Video-15
+[EN COURS écran 0] Video-12
+[INTERROMPUE écran 0] Video-12 conservée pour reprise
+[INTERROMPUE écran 1] Video-15 conservée pour reprise
+Tampon figé (5 vidéos) :
+  Video-16
+  Video-18
+  Video-20
+  Video-21
+  Video-19
+[PRINCIPAL pid=24141] Envoi du tampon au secondaire (pid=24143).
+[SECONDAIRE pid=24143] Copie de 7 video(s) :
+  Q Video-16
+  Q Video-18
+  Q Video-20
+  Q Video-21
+  Q Video-19
+  E 0 Video-12
+  E 1 Video-15
+[PRINCIPAL pid=24141] Confirmation recue : CONFIRMATION
+Appuyez sur Entree pour redemarrer le serveur principal.
+[RESTAURATION écran 0] Video-12 à reprendre
+[RESTAURATION écran 1] Video-15 à reprendre
+[EN COURS écran 0] Video-12
+[EN COURS écran 1] Video-15
+[SCREEN] Diffusion: Video-12
+[SCREEN] Diffusion: Video-15
+[EN COURS écran 1] Video-18
+[EN COURS écran 0] Video-16
+[SCREEN] Diffusion: Video-18
+[SCREEN] Diffusion: Video-16
+[EN COURS écran 1] Video-20
+[EN COURS écran 0] Video-21
+[SCREEN] Diffusion: Video-20
+[EN COURS écran 1] Video-19
+[SCREEN] Diffusion: Video-21
+[EN COURS écran 0] Video-24
+[SCREEN] Diffusion: Video-24
+[SCREEN] Diffusion: Video-19
+[EN COURS écran 1] Video-26
+[EN COURS écran 0] Video-25
+[SCREEN] Diffusion: Video-25
+[EN COURS écran 0] Video-29
+[SCREEN] Diffusion: Video-26
+[EN COURS écran 1] Video-28
+[SCREEN] Diffusion: Video-29
+[SCREEN] Diffusion: Video-28
+[EN COURS écran 1] Video-27
+[EN COURS écran 0] Video-30
+[SCREEN] Diffusion: Video-30
+[EN COURS écran 0] Video-33
+[SCREEN] Diffusion: Video-27
+[EN COURS écran 1] Video-32
+[SCREEN] Diffusion: Video-33
+[EN COURS écran 0] Video-34
+[SCREEN] Diffusion: Video-32
+[EN COURS écran 1] Video-31
+[SCREEN] Diffusion: Video-34
+[SCREEN] Diffusion: Video-31
+[EN COURS écran 0] Video-37
+[EN COURS écran 1] Video-36
+[SCREEN] Diffusion: Video-36
+[SCREEN] Diffusion: Video-37
+[EN COURS écran 1] Video-38
+[EN COURS écran 0] Video-35
+[SCREEN] Diffusion: Video-35
+[EN COURS écran 0] Video-39
+[SCREEN] Diffusion: Video-38
+[EN COURS écran 1] Video-41
+[SCREEN] Diffusion: Video-41
+[SCREEN] Diffusion: Video-39
+[EN COURS écran 1] Video-43
+[EN COURS écran 0] Video-42
+[SCREEN] Diffusion: Video-42
+[SCREEN] Diffusion: Video-43
+[EN COURS écran 0] Video-44
+[EN COURS écran 1] Video-40
+[SCREEN] Diffusion: Video-44
+[EN COURS écran 0] Video-45
+[SCREEN] Diffusion: Video-40
+[EN COURS écran 1] Video-46
+[SCREEN] Diffusion: Video-46
+[SCREEN] Diffusion: Video-45
+[EN COURS écran 1] Video-47
+[EN COURS écran 0] Video-48
+[SCREEN] Diffusion: Video-48
+[EN COURS écran 0] Video-49
+[SCREEN] Diffusion: Video-47
+[EN COURS écran 1] Video-50
+[SCREEN] Diffusion: Video-50
+[SCREEN] Diffusion: Video-49
+[EN COURS écran 0] Video-52
+[EN COURS écran 1] Video-51
+[SCREEN] Diffusion: Video-52
+[EN COURS écran 0] Video-55
+[SCREEN] Diffusion: Video-51
+[EN COURS écran 1] Video-54
+[SCREEN] Diffusion: Video-55
+[EN COURS écran 0] Video-56
+[SCREEN] Diffusion: Video-54
+[EN COURS écran 1] Video-53
+[SCREEN] Diffusion: Video-56
+[EN COURS écran 0] Video-57
+[SCREEN] Diffusion: Video-53
+[EN COURS écran 1] Video-58
+[SCREEN] Diffusion: Video-57
+[EN COURS écran 0] Video-59
+[SCREEN] Diffusion: Video-58
+[EN COURS écran 1] Video-60
+[SCREEN] Diffusion: Video-59
+[SCREEN] Diffusion: Video-60
+[EN COURS écran 1] Video-61
+[EN COURS écran 0] Video-62
+[SCREEN] Diffusion: Video-62
+[SCREEN] Diffusion: Video-61
+[EN COURS écran 0] Video-63
+[EN COURS écran 1] Video-64
+[SCREEN] Diffusion: Video-64
+[EN COURS écran 1] Video-65
+[SCREEN] Diffusion: Video-63
+[EN COURS écran 0] Video-67
+[SCREEN] Diffusion: Video-67
+[SCREEN] Diffusion: Video-65
+[EN COURS écran 0] Video-69
+[EN COURS écran 1] Video-70
+[SCREEN] Diffusion: Video-70
+[EN COURS écran 1] Video-68
+[SCREEN] Diffusion: Video-69
+[EN COURS écran 0] Video-66
+[SCREEN] Diffusion: Video-66
+[EN COURS écran 0] Video-71
+[SCREEN] Diffusion: Video-68
+[EN COURS écran 1] Video-72
+[SCREEN] Diffusion: Video-71
+[SCREEN] Diffusion: Video-72
+[EN COURS écran 1] Video-74
+[EN COURS écran 0] Video-73
+[SCREEN] Diffusion: Video-74
+[SCREEN] Diffusion: Video-73
+[EN COURS écran 1] Video-75
+[EN COURS écran 0] Video-76
+[SCREEN] Diffusion: Video-75
+[EN COURS écran 1] Video-77
+[SCREEN] Diffusion: Video-76
+[EN COURS écran 0] Video-78
+[SCREEN] Diffusion: Video-78
+[EN COURS écran 0] Video-79
+[SCREEN] Diffusion: Video-77
+[EN COURS écran 1] Video-80
+[SCREEN] Diffusion: Video-79
+[EN COURS écran 0] Video-83
+[SCREEN] Diffusion: Video-80
+[EN COURS écran 1] Video-82
+[SCREEN] Diffusion: Video-83
+[SCREEN] Diffusion: Video-82
+[EN COURS écran 1] Video-81
+[EN COURS écran 0] Video-84
+[SCREEN] Diffusion: Video-81
+[EN COURS écran 1] Video-85
+[SCREEN] Diffusion: Video-84
+[EN COURS écran 0] Video-86
+[SCREEN] Diffusion: Video-85
+[EN COURS écran 1] Video-87
+[SCREEN] Diffusion: Video-86
+[EN COURS écran 0] Video-89
+[SCREEN] Diffusion: Video-87
+[EN COURS écran 1] Video-91
+[SCREEN] Diffusion: Video-89
+[EN COURS écran 0] Video-90
+[SCREEN] Diffusion: Video-91
+[EN COURS écran 1] Video-92
+[SCREEN] Diffusion: Video-90
+[EN COURS écran 0] Video-88
+[SCREEN] Diffusion: Video-92
+[EN COURS écran 1] Video-93
+[SCREEN] Diffusion: Video-88
+[EN COURS écran 0] Video-94
+[SCREEN] Diffusion: Video-93
+[EN COURS écran 1] Video-95
+[SCREEN] Diffusion: Video-94
+[EN COURS écran 0] Video-96
+[SCREEN] Diffusion: Video-95
+[EN COURS écran 1] Video-97
+[SCREEN] Diffusion: Video-96
+[EN COURS écran 0] Video-98
+[SCREEN] Diffusion: Video-97
+[EN COURS écran 1] Video-99
+[SCREEN] Diffusion: Video-98
+[EN COURS écran 0] Video-100
+[SCREEN] Diffusion: Video-99
+[EN COURS écran 1] Video-101
+[SCREEN] Diffusion: Video-100
+[EN COURS écran 0] Video-102
+[SCREEN] Diffusion: Video-101
+[EN COURS écran 1] Video-103
+[SCREEN] Diffusion: Video-102
+[EN COURS écran 0] Video-104
+[SCREEN] Diffusion: Video-103
+[EN COURS écran 1] Video-105
+[SCREEN] Diffusion: Video-104
+[EN COURS écran 0] Video-106
+[SCREEN] Diffusion: Video-105
+[EN COURS écran 1] Video-107
+[SCREEN] Diffusion: Video-106
+[EN COURS écran 0] Video-108
+[SCREEN] Diffusion: Video-107
+[EN COURS écran 1] Video-109
+[SCREEN] Diffusion: Video-108
+[EN COURS écran 0] Video-110
+[SCREEN] Diffusion: Video-109
+[EN COURS écran 1] Video-111
+[SCREEN] Diffusion: Video-110
+[EN COURS écran 0] Video-112
+[SCREEN] Diffusion: Video-111
+[EN COURS écran 1] Video-113
+[SCREEN] Diffusion: Video-112
+[EN COURS écran 0] Video-114
+[SCREEN] Diffusion: Video-113
+[EN COURS écran 1] Video-115
+[SCREEN] Diffusion: Video-114
+[EN COURS écran 0] Video-116
+[SCREEN] Diffusion: Video-115
+[EN COURS écran 1] Video-117
+[SCREEN] Diffusion: Video-116
+[EN COURS écran 0] Video-118
