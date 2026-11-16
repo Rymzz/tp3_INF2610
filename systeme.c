@@ -55,7 +55,7 @@ void handle_breakdown(int sig) {
 (On libère une vidéo seulement après broadcastVideo)*/
 typedef struct {
     char *videos[BUFFER_SIZE];
-    int indice_depot;
+    int indice_depot; 
     int indice_retrait;
     int nb_videos;
 
@@ -89,8 +89,13 @@ Serveur serveur = {
     .arret = 0
 };
 
-/* Moniteur de Hoare : celui qui signale cède sa place tout de suite
- * au thread qu'il vient de réveiller. */
+/* Moniteur de Hoare. mutex = le verrou à obtenir (un seul thread à l'intérieur)
+ * place_libre est la file d'attente des caméras
+ * objet_dispo la file d'attente des écrans
+ * signaleurs (File de celui qui vient de signaler)
+ * Une caméra y va après un dépôt, le temps qu'un écran prenne la vidéo.
+ * Un écran y va après un retrait, le temps qu'une caméra voie la case libre. */
+ 
 void entrer(void) {
     pthread_mutex_lock(&serveur.mutex);
 }
@@ -235,7 +240,7 @@ void *boucle_ecran(void *arg) {
 
 void *surveiller_panne(void *arg) {
     (void)arg;
-    while (!breakdown_flag)
+    while (breakdown_flag == 0)
         usleep(1000);
     arreter_serveur();
     return NULL;
