@@ -93,8 +93,8 @@ Serveur serveur = {
  * place_libre est la file d'attente des caméras
  * objet_dispo la file d'attente des écrans
  * signaleurs (File de celui qui vient de signaler)
- * Une caméra y va après un dépôt, le temps qu'un écran prenne la vidéo.
- * Un écran y va après un retrait, le temps qu'une caméra voie la case libre. */
+ * Une caméra y va après avoir déposé une vidéo et signalé objet_dispo
+ * écran y va après avoir retiré une vidéo et signalé place_libre */
  
 void entrer(void) {
     pthread_mutex_lock(&serveur.mutex);
@@ -104,7 +104,7 @@ void attendre(pthread_cond_t *condition, int *nb_en_attente) {
     (*nb_en_attente)++;
     if (serveur.nb_signaleurs > 0)
         pthread_cond_signal(&serveur.signaleurs);
-    pthread_cond_wait(condition, &serveur.mutex);
+    pthread_cond_wait(condition, &serveur.mutex); // // Libère le mutex et attend sur la condition, puis reprend le mutex avant de continuer.
     (*nb_en_attente)--;
 }
 
@@ -112,7 +112,7 @@ void signaler(pthread_cond_t *condition, int *nb_en_attente) {
     if (*nb_en_attente > 0) {
         serveur.nb_signaleurs++;
         pthread_cond_signal(condition);
-        pthread_cond_wait(&serveur.signaleurs, &serveur.mutex);
+        pthread_cond_wait(&serveur.signaleurs, &serveur.mutex); // Libère le mutex et attend sur signaleurs, puis reprend le mutex avant de continuer.
         serveur.nb_signaleurs--;
     }
 }
@@ -132,18 +132,21 @@ int deposer(char *video) {
         sortir();
         return 0;
     }
-    serveur.videos[serveur.indice_depot] = video;
+
+    // Stockes le pointeur vers la video dans la case du buffer a l'indice de depot
+    serveur.videos[serveur.indice_depot] = video; 
     serveur.indice_depot = (serveur.indice_depot + 1) % BUFFER_SIZE;
     serveur.nb_videos++;
+    //on signale les ecrans qui attendent dans la file objet dispo           
     signaler(&serveur.objet_dispo, &serveur.nb_ecran_en_attente);
     sortir();
     return 1;
 }
 
-/* Retourne NULL si arret est vrai. */
+/* Retourne NULL si arret est vrai */
 char *retirer(int ecran) {
     entrer();
-    /* Après restauration, cet écran reprend sa vidéo interrompue. */
+    /* Après la restauration du serveur , cet écran reprend sa vidéo interrompue */
     if (!serveur.arret && serveur.en_cours[ecran] != NULL) {
         char *video = serveur.en_cours[ecran];
         sortir();
@@ -155,9 +158,11 @@ char *retirer(int ecran) {
         sortir();
         return NULL;
     }
+    // Recupere le pointeur vers la video situee  à l'indice de retrait du buffer
     char *video = serveur.videos[serveur.indice_retrait];
-    /* Transfert de propriété atomique sous le moniteur : aucun instant
-     * où la vidéo ne figure ni dans le tampon ni dans en_cours. */
+
+    // Transfère la vidéo du buffer vers en_cours,
+    // afin de conserver une trace de la vidéo pour la restauration après une panne
     serveur.en_cours[ecran] = video;
     serveur.videos[serveur.indice_retrait] = NULL;
     serveur.indice_retrait = (serveur.indice_retrait + 1) % BUFFER_SIZE;
@@ -170,6 +175,9 @@ char *retirer(int ecran) {
 void arreter_serveur(void) {
     entrer();
     serveur.arret = 1;
+
+    // Reveille tous les threads en attente pour qu'ils détectent l'arrêt
+    // et quittent le moniteur après la panne.
     while (serveur.nb_cam_en_attente > 0)
         signaler(&serveur.place_libre, &serveur.nb_cam_en_attente);
     while (serveur.nb_ecran_en_attente > 0)
@@ -194,25 +202,23 @@ void *boucle_camera(void *arg) {
 }
 
 /* SECTION 2 : simulation d'une diffusion interruptible sans modifier
- * broadcastVideo(), fournie par le TP. La vidéo n'est validée qu'à la fin.
- * Le modèle couvre une panne simulée coopérative, pas un arrêt brutal du processus.
+
  */
 int diffuser_et_valider(int ecran, char *video) {
     printf("[EN COURS écran %d] %s\n", ecran, video);
     for (int ms = 0; ms < DUREE_DIFFUSION_MS; ms += 20) {
-        usleep(20000);
+        usleep(20000); // Attend 20 ms pour simuler le temps de diffusion de la vidéo
         entrer();
         int interrompue = serveur.arret || breakdown_flag;
         sortir();
         if (interrompue) {
             printf("[INTERROMPUE écran %d] %s conservée pour reprise\n", ecran, video);
-            return 0; /* Ne pas libérer : la sauvegarde en a besoin. */
+            return 0; 
         }
     }
 
-    /* Validation et arrêt sont sérialisés par le même moniteur.
-     * Si la panne a déjà été observée, on garde la vidéo pour la rejouer.
-     * Le printf fourni représente ici l'achèvement de la diffusion simulée. */
+   
+    // Revérifie l'arrêt (une panne a pu survenir depuis la derniere vérification)
     entrer();
     if (serveur.arret || breakdown_flag) {
         sortir();
@@ -230,6 +236,7 @@ void *boucle_ecran(void *arg) {
     int ecran = *(int *)arg;
     for (;;) {
         char *video = retirer(ecran);
+        // Si le serveur est arrêté, retirer retourne NULL, on arrête la boucle
         if (video == NULL)
             break;
         if (!diffuser_et_valider(ecran, video))
@@ -401,7 +408,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     if (pid_secondaire == 0) {
-        serveur_secondaire();
+        serveur_secondaire(); // Lance le serveur secondaire
         exit(0);
     }
     close(vers_secondaire[0]);
@@ -420,7 +427,11 @@ int main(int argc, char *argv[]) {
     pthread_t ecrans[N_SCREENS];
     pthread_t panne;
     int ids_ecrans[N_SCREENS];
-    for (int e = 0; e < N_SCREENS; e++) ids_ecrans[e] = e;
+    for (int e = 0; e < N_SCREENS; e++){
+        ids_ecrans[e] = e; // Initialise le numéro de chaque écran pour le transmettre à son thread
+
+    }
+     
     int i;
 
     for (i = 0; i < N_CAMERAS; i++)
@@ -435,8 +446,11 @@ int main(int argc, char *argv[]) {
         pthread_join(ecrans[i], NULL);
     pthread_join(panne, NULL);
 
+    // Affiche le nombre de vidéos restantes dans le buffer(celle pas visionné)
     printf("Tampon figé (%d vidéos) :\n", serveur.nb_videos);
+    // Parcourt les vidéos restantes dans leur ordre de retrait
     for (i = 0; i < serveur.nb_videos; i++) {
+        // Calcule la case à lire en revenant au début du buffer si nécessaire
         int indice = (serveur.indice_retrait + i) % BUFFER_SIZE;
         printf("  %s\n", serveur.videos[indice]);
     }
@@ -446,11 +460,11 @@ int main(int argc, char *argv[]) {
     printf("Appuyez sur Entree pour redemarrer le serveur principal.\n");
     fflush(stdout);
     char touche[16];
-    fgets(touche, sizeof(touche), stdin);
+    fgets(touche, sizeof(touche), stdin); // on attends la touche entrée pour continuer
 
     breakdown_flag = 0; /* La panne simulée est résolue. */
     reinitialiser_tampon();
-    recevoir_copie();
+    recevoir_copie(); // Restaure les données sauvegardées sur le secondaire
     waitpid(pid_secondaire, NULL, 0);
 
     for (i = 0; i < N_CAMERAS; i++)
