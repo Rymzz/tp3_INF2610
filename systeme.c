@@ -256,10 +256,13 @@ void *surveiller_panne(void *arg) {
 int vers_secondaire[2];
 int vers_principal[2];
 
+/* Lit une ligne envoyée dans le tube, sans le \n
+ * Le secondaire l'utilise pour lire les vidéos du principal, jusqu'à FIN. */
 int lire_ligne(int fd, char *ligne, int taille) {
     int n = 0;
     while (n < taille - 1) {
         char c;
+        /*renvoie le nombre d'octets lus (1 si un caractère est arrivé, 0 si le tube fermé) */
         ssize_t recu = read(fd, &c, 1);
         if (recu <= 0)
             return 0;
@@ -272,6 +275,7 @@ int lire_ligne(int fd, char *ligne, int taille) {
 }
 
 void serveur_secondaire(void) {
+    /* On ferme les bouts qu'on n'utilise pas. */
     close(vers_secondaire[1]);
     close(vers_principal[0]);
 
